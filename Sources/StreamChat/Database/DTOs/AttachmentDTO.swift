@@ -15,17 +15,19 @@ class AttachmentDTO: NSManagedObject {
     }
 
     /// An attachment type.
-    @NSManaged private var type: String
+    @NSManaged private var type: String?
     var attachmentType: AttachmentType {
-        get { .init(rawValue: type) }
+        get { AttachmentType(rawValue: type ?? AttachmentType.unknown.rawValue) }
         set { type = newValue.rawValue }
     }
 
     /// An attachment local state.
-    @NSManaged private var localStateRaw: String
+    @NSManaged private var localStateRaw: String?
     @NSManaged private var localProgress: Double
     var localState: LocalAttachmentState? {
-        get { LocalAttachmentState(rawValue: localStateRaw, progress: localProgress) }
+        get {
+            localStateRaw.flatMap { LocalAttachmentState(rawValue: $0, progress: localProgress) }
+        }
         set {
             localStateRaw = newValue?.rawValue ?? ""
             localProgress = newValue?.progress ?? 0

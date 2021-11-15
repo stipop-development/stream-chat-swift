@@ -15,7 +15,7 @@ final class MessageReactionDTO: NSManagedObject {
     @NSManaged var score: Int64
     @NSManaged var createdAt: Date?
     @NSManaged var updatedAt: Date?
-    @NSManaged var extraData: Data
+    @NSManaged var extraData: Data?
     
     @NSManaged var message: MessageDTO
     @NSManaged var user: UserDTO
@@ -137,17 +137,17 @@ extension MessageReactionDTO {
 
     /// Snapshots the current state of `MessageReactionDTO` and returns an immutable model object from it.
     func asModel() -> ChatMessageReaction {
-        let extraData: [String: RawJSON]
-
-        if self.extraData.isEmpty {
-            extraData = [:]
-        } else {
+        let decodedExtraData: [String: RawJSON]
+        
+        if let extraData = self.extraData, !extraData.isEmpty {
             do {
-                extraData = try JSONDecoder.default.decode([String: RawJSON].self, from: self.extraData)
+                decodedExtraData = try JSONDecoder.default.decode([String: RawJSON].self, from: extraData)
             } catch {
                 log.error("Failed decoding saved extra data with error: \(error)")
-                extraData = [:]
+                decodedExtraData = [:]
             }
+        } else {
+            decodedExtraData = [:]
         }
 
         return .init(
@@ -156,7 +156,7 @@ extension MessageReactionDTO {
             createdAt: createdAt ?? .init(),
             updatedAt: updatedAt ?? .init(),
             author: user.asModel(),
-            extraData: extraData
+            extraData: decodedExtraData
         )
     }
 }
