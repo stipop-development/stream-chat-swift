@@ -25,7 +25,8 @@ class InternetConnection {
     /// The current Internet connection status.
     var status: InternetConnection.Status { monitor.status }
     
-    private var notificationCenter: NotificationCenter
+    /// The notification center that posts notifications when connection state changes..
+    var notificationCenter: NotificationCenter
     
     /// A specific Internet connection monitor.
     private var monitor: InternetConnectionMonitor
