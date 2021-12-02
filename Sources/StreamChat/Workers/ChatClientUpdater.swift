@@ -102,10 +102,7 @@ class ChatClientUpdater {
                         self.client.connectionStatus = .disconnected(error: nil)
                     }
 
-                    self.connect(
-                        userInfo: userInfo,
-                        completion: completion
-                    )
+                    self.connect(completion: completion)
                 } catch {
                     completion?(error)
                 }
@@ -122,10 +119,7 @@ class ChatClientUpdater {
     /// - Parameter completion: Called when the connection is established. If the connection fails, the completion is
     /// called with an error.
     ///
-    func connect(
-        userInfo: UserInfo? = nil,
-        completion: ((Error?) -> Void)? = nil
-    ) {
+    func connect(completion: ((Error?) -> Void)? = nil) {
         // Connecting is not possible in connectionless mode (duh)
         guard client.config.isClientInActiveMode else {
             completion?(ClientError.ClientIsNotInActiveMode())
