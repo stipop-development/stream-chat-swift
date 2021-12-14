@@ -12,7 +12,6 @@ class ChatClientConnectionStatus_Tests: XCTestCase {
             (.initialized, .initialized),
             (.connecting, .connecting),
             (.waitingForConnectionId, .connecting),
-            (.waitingForReconnect(error: testError), .connecting),
             (.connected(connectionId: .unique), .connected),
             (.disconnecting(source: .noPongReceived), .disconnecting),
             (.disconnecting(source: .serverInitiated(error: testError)), .disconnecting),
@@ -51,4 +50,58 @@ final class WebSocketConnectionState_Tests: XCTestCase {
             XCTAssertEqual(source.serverError, serverError)
         }
     }
+
+//
+//    func test_returnsNilForStopError() {
+//        let stopError = WebSocketEngineError(
+//            reason: "Testing stop error",
+//            code: WebSocketEngineError.stopErrorCode,
+//            engineError: nil
+//        )
+//
+//        let delay = strategy.reconnectionDelay(forConnectionError: stopError)
+//        XCTAssertNil(delay)
+//    }
+//
+//    func test_returnsNilForInvalidTokenErrors() {
+//        let invalidTokenErrorCodes = [40, 41, 42, 43]
+//        invalidTokenErrorCodes.forEach { invalidTokenErrorCode in
+//            let error = ErrorPayload(code: invalidTokenErrorCode, message: "", statusCode: 0)
+//            let delay = strategy.reconnectionDelay(forConnectionError: error)
+//            XCTAssertNil(delay)
+//        }
+//
+//        // Check other error codes return a non-nil delay
+//        let error = ErrorPayload(code: 66, message: "", statusCode: 0)
+//        let delay = strategy.reconnectionDelay(forConnectionError: error)
+//        XCTAssertNotNil(delay)
+//    }
+//
+//    func test_returnsNilForInternetIsOfflineError() {
+//        let error = WebSocketEngineError(
+//            error:
+//            NSError(
+//                domain: NSURLErrorDomain,
+//                code: NSURLErrorNotConnectedToInternet,
+//                userInfo: nil
+//            )
+//        )
+//        let delay = strategy.reconnectionDelay(forConnectionError: error)
+//        XCTAssertNil(delay)
+//    }
+//
+//    func test_returnsNil_forClientSideErrorStatusCodes() {
+//        let clientSideErrorStatusCodes = 400...499
+//
+//        clientSideErrorStatusCodes.forEach { statusCode in
+//            let error = ErrorPayload(code: 0, message: "", statusCode: statusCode)
+//            let delay = strategy.reconnectionDelay(forConnectionError: error)
+//            XCTAssertNil(delay)
+//        }
+//
+//        // Check server erros return a non-nil delay
+//        let error = ErrorPayload(code: 0, message: "", statusCode: 500)
+//        let delay = strategy.reconnectionDelay(forConnectionError: error)
+//        XCTAssertNotNil(delay)
+//    }
 }

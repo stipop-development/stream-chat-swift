@@ -36,7 +36,7 @@ public class ChatClient {
     private let workerBuilders: [WorkerBuilder]
     
     /// Background worker that takes care about client connection recovery when the Internet comes back OR app transitions from background to foreground.
-    private(set) var connectionRecoveryUpdater: ConnectionRecoveryUpdater?
+    private(set) var connectionRecoveryHandler: ConnectionRecoveryHandler?
 
     /// The notification center used to send and receive notifications about incoming events.
     private(set) lazy var eventNotificationCenter: EventNotificationCenter = {
@@ -358,13 +358,15 @@ public class ChatClient {
             builder(self.databaseContainer, self.apiClient)
         }
         
-        connectionRecoveryUpdater = environment.connectionRecoveryUpdaterBuilder(
-            databaseContainer,
-            eventNotificationCenter,
-            apiClient,
-            .init(database: databaseContainer, apiClient: apiClient),
-            config.isLocalStorageEnabled
-        )
+        if let webSocketClient = webSocketClient {
+            connectionRecoveryHandler = environment.connectionRecoveryHandlerBuilder(
+                webSocketClient,
+                eventNotificationCenter,
+                environment.backgroundTaskSchedulerBuilder(),
+                environment.internetConnection(eventNotificationCenter),
+                config.staysConnectedInBackground
+            )
+        }
     }
 
     func completeConnectionIdWaiters(connectionId: String?) {
@@ -477,7 +479,23 @@ extension ChatClient {
         
         var tokenExpirationRetryStrategy: RetryStrategy = DefaultRetryStrategy()
         
-        var connectionRecoveryUpdaterBuilder = ConnectionRecoveryUpdater.init
+        var connectionRecoveryHandlerBuilder: (
+            _ webSocketClient: WebSocketClient,
+            _ eventNotificationCenter: EventNotificationCenter,
+            _ backgroundTaskScheduler: BackgroundTaskScheduler?,
+            _ internetConnection: InternetConnection,
+            _ staysConnectedInBackground: Bool
+        ) -> ConnectionRecoveryHandler = {
+            DefaultConnectionRecoveryHandler(
+                webSocketClient: $0,
+                eventNotificationCenter: $1,
+                backgroundTaskScheduler: $2,
+                internetConnection: $3,
+                reconnectionStrategy: DefaultRetryStrategy(),
+                reconnectionTimerType: DefaultTimer.self,
+                staysConnectedInBackground: $4
+            )
+        }
     }
 }
 
@@ -545,8 +563,7 @@ extension ChatClient: ConnectionStateDelegate {
         case .initialized,
              .connecting,
              .disconnecting,
-             .waitingForConnectionId,
-             .waitingForReconnect:
+             .waitingForConnectionId:
             shouldNotifyConnectionIdWaiters = false
             connectionId = nil
         }
@@ -612,7 +629,7 @@ extension ChatClient: ConnectionStateDelegate {
     }
 }
 
-private extension ClientError {
+extension ClientError {
     var isTokenExpiredError: Bool {
         if let error = underlyingError as? ErrorPayload,
            ErrorPayload.tokenInvadlidErrorCodes ~= error.code {

@@ -3,6 +3,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 // `ConnectionStatus` is just a simplified and friendlier wrapper around `WebSocketConnectionState`.
 
@@ -33,9 +34,11 @@ extension ConnectionStatus {
             self = .initialized
             
         case let .disconnected(source):
-            self = .disconnected(error: source.serverError)
-            
-        case .connecting, .waitingForConnectionId, .waitingForReconnect:
+            self = (webSocketConnectionState.isAutomaticReconnectionEnabled || source.serverError?.isTokenExpiredError == true)
+                ? .connecting
+                : .disconnected(error: source.serverError)
+
+        case .connecting, .waitingForConnectionId:
             self = .connecting
             
         case .connected:
@@ -91,9 +94,6 @@ enum WebSocketConnectionState: Equatable {
     /// The web socket is disconnecting. `source` contains more info about the source of the event.
     case disconnecting(source: DisconnectionSource)
     
-    /// The web socket is waiting for reconnecting. Optinally, an error is provided with the reason why it was disconnected.
-    case waitingForReconnect(error: ClientError? = nil)
-    
     /// Checks if the connection state is connected.
     var isConnected: Bool {
         if case .connected = self {
@@ -108,5 +108,38 @@ enum WebSocketConnectionState: Equatable {
             return false
         }
         return true
+    }
+    
+    var isAutomaticReconnectionEnabled: Bool {
+        guard case let .disconnected(source) = self else { return false }
+        
+        switch source {
+        case let .serverInitiated(clientError):
+            if let wsEngineError = clientError?.underlyingError as? WebSocketEngineError,
+               wsEngineError.code == WebSocketEngineError.stopErrorCode {
+                // Don't reconnect on `stop` errors
+                return false
+            }
+            
+            if let serverInitiatedError = clientError?.underlyingError as? ErrorPayload {
+                if ErrorPayload.tokenInvadlidErrorCodes ~= serverInitiatedError.code {
+                    // Don't reconnect on invalid token errors
+                    return false
+                }
+                
+                if 400...499 ~= serverInitiatedError.statusCode {
+                    // Don't reconnect on client side errors
+                    return false
+                }
+            }
+            
+            return true
+        case .systemInitiated:
+            return true
+        case .noPongReceived:
+            return true
+        case .userInitiated:
+            return false
+        }
     }
 }

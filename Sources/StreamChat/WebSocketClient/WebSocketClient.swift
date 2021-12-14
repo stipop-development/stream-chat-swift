@@ -124,6 +124,14 @@ class WebSocketClient {
     /// Calling this function has no effect, if the connection is in an inactive state.
     /// - Parameter source: Additional information about the source of the disconnection. Default value is `.userInitiated`.
     func disconnect(source: WebSocketConnectionState.DisconnectionSource = .userInitiated) {
+        switch connectionState {
+        case .initialized, .disconnecting, .disconnected:
+            // Calling connect in the following states has no effect
+            return
+        default:
+            break
+        }
+        
         connectionState = .disconnecting(source: source)
         engineQueue.async { [engine, eventsBatcher] in
             engine?.disconnect()
@@ -206,7 +214,7 @@ extension WebSocketClient: WebSocketEngineDelegate {
     
     func webSocketDidDisconnect(error engineError: WebSocketEngineError?) {
         switch connectionState {
-        case .connecting, .connected, .waitingForConnectionId:
+        case .connected, .waitingForConnectionId:
             let serverError = engineError.map { ClientError.WebSocket(with: $0) }
             
             connectionState = .disconnected(source: .serverInitiated(error: serverError))
@@ -214,7 +222,7 @@ extension WebSocketClient: WebSocketEngineDelegate {
         case let .disconnecting(source):
             connectionState = .disconnected(source: source)
         
-        case .initialized, .disconnected, .waitingForReconnect:
+        case .initialized, .connecting, .disconnected:
             log.error("Web socket can not be disconnected when in \(connectionState) state.")
         }
     }

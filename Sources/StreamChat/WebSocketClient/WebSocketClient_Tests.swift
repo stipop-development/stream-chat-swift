@@ -529,6 +529,13 @@ extension WebSocketEngineError: Equatable {
 }
 
 class MockBackgroundTaskScheduler: BackgroundTaskScheduler {
+    var appIsActive_called: Bool = false
+    var appIsActive_returns: Bool = true
+    var appIsActive: Bool {
+        appIsActive_called = true
+        return appIsActive_returns
+    }
+    
     var beginBackgroundTask_called: Bool = false
     var beginBackgroundTask_expirationHandler: (() -> Void)?
     var beginBackgroundTask_returns: Bool = true
